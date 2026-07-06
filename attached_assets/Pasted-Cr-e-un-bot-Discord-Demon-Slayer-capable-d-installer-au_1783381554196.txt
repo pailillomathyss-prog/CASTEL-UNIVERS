@@ -1,0 +1,276 @@
+Crée un bot Discord Demon Slayer capable d’installer automatiquement toute la structure d’un serveur communautaire.
+
+Le bot doit créer automatiquement :
+
+* Les rôles membres
+* Les catégories
+* Les salons
+* Les permissions
+* Les panels interactifs
+
+Le serveur doit être utilisable directement après l’installation.
+
+Utiliser Discord.js v14.
+
+⸻
+
+Installation automatique du serveur
+
+Créer une installation réservée uniquement aux administrateurs existants du serveur.
+
+Lorsqu’un administrateur lance l’installation, le bot vérifie si la structure existe déjà.
+
+Si elle n’existe pas, il crée automatiquement :
+
+Catégorie : 🏯 Domaine des Pourfendeurs
+
+Salons :
+
+📜・règlement
+👋・bienvenue
+📢・annonces
+🎴・choix-rôles
+⚔️・entraînement
+🏆・classement
+
+⸻
+
+Catégorie : 🌙 Royaume des Démons
+
+Salons :
+
+👹・repère-des-démons
+🌑・missions-démons
+
+⸻
+
+Catégorie : 💬 Communauté
+
+Salons :
+
+💬・discussion générale
+
+⸻
+
+Catégorie : 🛡️ Staff
+
+Créer uniquement les salons privés :
+
+🔒・staff
+📋・logs
+⚙️・configuration
+
+Les permissions utilisent les rôles administrateurs déjà présents sur le serveur.
+
+⸻
+
+Création automatique des rôles membres
+
+Créer uniquement les rôles liés au thème Demon Slayer.
+
+Arrivée
+
+🌸 Nouveau membre
+
+Factions
+
+⚔️ Corps des Pourfendeurs
+👹 Démons
+🌸 Civil
+
+Souffles
+
+🌊 Souffle de l’Eau
+🔥 Souffle de la Flamme
+⚡ Souffle de la Foudre
+🌪️ Souffle du Vent
+🌫️ Souffle de la Brume
+🌸 Souffle de l’Amour
+🦋 Souffle de l’Insecte
+🐍 Souffle du Serpent
+🪨 Souffle de la Roche
+☀️ Souffle du Soleil
+
+Configurer automatiquement les couleurs des rôles.
+
+⸻
+
+Panel de choix des rôles
+
+Dans 🎴・choix-rôles :
+
+Créer un embed :
+
+“⚔️ Choisis ton chemin”
+
+Boutons :
+
+⚔️ Pourfendeur
+👹 Démon
+🌸 Civil
+
+Fonctionnement :
+
+* Ajouter le rôle choisi
+* Retirer les anciennes factions
+* Envoyer une confirmation éphémère
+
+⸻
+
+Système d’entraînement pour obtenir un souffle
+
+Dans ⚔️・entraînement :
+
+Créer un panel :
+
+“🔥 Entraînement des souffles”
+
+Bouton :
+
+⚔️ Commencer l’entraînement
+
+Les membres doivent réussir des épreuves :
+
+📜 Quiz Demon Slayer
+⚡ Test de rapidité
+🧠 Test de mémoire
+⚔️ Combat avec choix multiples
+
+Les membres commencent sans souffle.
+
+Les réussites donnent une progression d’entraînement.
+
+Lorsque le niveau requis est atteint :
+
+* Attribution automatique d’un souffle
+* Message de réussite
+* Création d’un log
+
+Les souffles rares demandent plus de progression.
+
+⸻
+
+Système XP et niveaux
+
+Créer un système d’expérience communautaire.
+
+Les membres gagnent de l’XP avec :
+
+* Messages envoyés dans les salons autorisés
+* Participation aux discussions
+
+Ajouter :
+
+* Cooldown anti-spam
+* Limite d’XP par minute
+* Protection contre les abus
+
+Progression :
+
+🌱 Niveau 1 : Nouveau membre
+⚔️ Niveau 5 : Recrue
+🗡️ Niveau 15 : Pourfendeur confirmé
+🔥 Niveau 30 : Guerrier d’élite
+🌸 Niveau 50 : Tsuguko
+👑 Niveau 75 : Pilier
+
+⸻
+
+Commande membre !rank
+
+Créer une commande simple :
+
+!rank
+
+La commande doit générer une image de profil personnalisée.
+
+L’image doit contenir :
+
+* Avatar Discord du membre
+* Nom Discord
+* Niveau actuel
+* Barre d’XP avec progression
+* XP actuelle / XP nécessaire
+* Faction
+* Souffle obtenu
+* Rang actuel
+* Style visuel Demon Slayer
+
+Design souhaité :
+
+* Carte de personnage anime
+* Fond inspiré du Japon féodal
+* Effets visuels selon la faction
+* Couleur adaptée au souffle obtenu
+
+Exemple :
+🔥 Souffle de la Flamme → thème rouge/orange
+🌊 Souffle de l’Eau → thème bleu
+⚡ Souffle de la Foudre → thème jaune
+
+La carte est générée automatiquement et envoyée dans Discord.
+
+⸻
+
+Classement
+
+Dans 🏆・classement :
+
+Créer un panel affichant :
+
+* Top membres par XP
+* Niveau
+* Rang
+* Souffle
+
+Mise à jour automatique.
+
+⸻
+
+Logs
+
+Dans 📋・logs :
+
+Enregistrer :
+
+* Attribution de rôles
+* Changement de faction
+* Obtention d’un souffle
+* Passage de niveau
+* Utilisation de !rank
+* Installation du serveur
+
+⸻
+
+Base de données
+
+Sauvegarder :
+
+* ID serveur
+* ID utilisateur
+* XP
+* Niveau
+* Faction
+* Souffle
+* Progression d’entraînement
+* Historique
+
+Les données doivent rester après redémarrage du bot.
+
+⸻
+
+Résultat attendu
+
+Créer un bot Discord Demon Slayer communautaire clé en main.
+
+L’administrateur invite le bot, lance l’installation, et le bot crée automatiquement :
+
+* La structure du serveur
+* Les rôles membres
+* Les permissions
+* Les panels
+* Le système d’entraînement
+* Le système XP
+* La commande !rank avec génération d’image
+
+Le bot doit rester simple et adapté à une communauté Discord, pas un MMORPG complet.
