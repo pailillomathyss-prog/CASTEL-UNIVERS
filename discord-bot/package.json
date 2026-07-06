@@ -1,0 +1,19 @@
+{
+  "name": "castel-univers-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord Demon Slayer - Castel Univers",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3",
+    "better-sqlite3": "^9.4.3",
+    "@napi-rs/canvas": "^0.1.51",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
