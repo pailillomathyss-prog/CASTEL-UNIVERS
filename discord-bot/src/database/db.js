@@ -33,25 +33,37 @@ function initDB() {
     );
 
     CREATE TABLE IF NOT EXISTS guilds (
-      guild_id        TEXT PRIMARY KEY,
-      log_channel_id  TEXT DEFAULT NULL,
-      installed       INTEGER DEFAULT 0,
-      installed_at    INTEGER DEFAULT NULL
+      guild_id                 TEXT PRIMARY KEY,
+      log_channel_id           TEXT DEFAULT NULL,
+      leaderboard_channel_id   TEXT DEFAULT NULL,
+      leaderboard_message_id   TEXT DEFAULT NULL,
+      installed                INTEGER DEFAULT 0,
+      installed_at             INTEGER DEFAULT NULL
     );
   `);
   console.log('📦 Base de données initialisée');
 }
 
-// Migration v1.5 — ajoute les colonnes de cooldown journalier si elles n'existent pas
+// Migration v1.5 — ajoute les colonnes de cooldown journalier + leaderboard persisté
 function migrateV15() {
-  const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
-  if (!cols.includes('last_training')) {
+  const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!userCols.includes('last_training')) {
     db.exec("ALTER TABLE users ADD COLUMN last_training TEXT DEFAULT NULL");
     console.log('✅ Migration v1.5 : colonne last_training ajoutée');
   }
-  if (!cols.includes('last_mission')) {
+  if (!userCols.includes('last_mission')) {
     db.exec("ALTER TABLE users ADD COLUMN last_mission TEXT DEFAULT NULL");
     console.log('✅ Migration v1.5 : colonne last_mission ajoutée');
+  }
+
+  const guildCols = db.prepare("PRAGMA table_info(guilds)").all().map(c => c.name);
+  if (!guildCols.includes('leaderboard_channel_id')) {
+    db.exec("ALTER TABLE guilds ADD COLUMN leaderboard_channel_id TEXT DEFAULT NULL");
+    console.log('✅ Migration v1.5 : colonne leaderboard_channel_id ajoutée');
+  }
+  if (!guildCols.includes('leaderboard_message_id')) {
+    db.exec("ALTER TABLE guilds ADD COLUMN leaderboard_message_id TEXT DEFAULT NULL");
+    console.log('✅ Migration v1.5 : colonne leaderboard_message_id ajoutée');
   }
 }
 
@@ -122,4 +134,10 @@ function setGuildInstalled(guildId) {
   ).run(guildId);
 }
 
-module.exports = { initDB, migrateV15, getUser, updateUser, getLeaderboard, addLog, getGuild, setGuildLog, setGuildInstalled, hasUsedDailyQuota, markDailyUsed, today };
+function setLeaderboardMessage(guildId, channelId, messageId) {
+  db.prepare(
+    'UPDATE guilds SET leaderboard_channel_id = ?, leaderboard_message_id = ? WHERE guild_id = ?'
+  ).run(channelId, messageId, guildId);
+}
+
+module.exports = { initDB, migrateV15, getUser, updateUser, getLeaderboard, addLog, getGuild, setGuildLog, setGuildInstalled, setLeaderboardMessage, hasUsedDailyQuota, markDailyUsed, today };

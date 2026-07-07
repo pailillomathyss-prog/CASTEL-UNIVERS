@@ -1,5 +1,5 @@
 const { AttachmentBuilder } = require('discord.js');
-const { getUser, addLog } = require('../database/db');
+const { getUser, getLeaderboard, addLog } = require('../database/db');
 const { getLevelInfo } = require('../systems/xp');
 const { generateRankCard } = require('../utils/rankCard');
 const { sendLog } = require('../utils/logger');
@@ -15,6 +15,10 @@ async function handleRankCommand(message) {
     const userData = getUser(userId, guildId);
     const levelInfo = getLevelInfo(userData.xp);
 
+    // Classement serveur (position dans le top XP)
+    const allUsers = getLeaderboard(guildId, 1000);
+    const serverRank = allUsers.findIndex(u => u.user_id === userId) + 1 || null;
+
     const avatarUrl = target.user.displayAvatarURL({ extension: 'png', size: 256 });
 
     const imageBuffer = await generateRankCard({
@@ -22,12 +26,12 @@ async function handleRankCommand(message) {
       avatarUrl,
       level:       levelInfo.level,
       xp:          userData.xp,
-      nextLevelXP: levelInfo.nextLevelXP,
       xpInLevel:   levelInfo.xpInLevel,
       xpForLevel:  levelInfo.xpForLevel,
       rank:        levelInfo.rank,
       faction:     userData.faction,
       souffle:     userData.souffle,
+      serverRank,
     });
 
     const attachment = new AttachmentBuilder(imageBuffer, { name: 'rank.png' });
