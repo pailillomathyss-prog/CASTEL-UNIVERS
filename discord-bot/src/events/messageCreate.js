@@ -28,8 +28,8 @@ module.exports = async function messageCreate(client, message) {
         const guildData = getGuild(message.guild.id);
         if (guildData.installed) {
           return message.reply(
-            '⚠️ Le serveur a déjà été installé. Pour réinstaller, contactez un développeur.\n' +
-            '*L\'installation existante a été préservée.*'
+            '⚠️ Le serveur a déjà été installé.\n' +
+            '💡 Utilise **`!update`** pour ajouter uniquement les nouveautés manquantes.'
           );
         }
 
@@ -41,6 +41,24 @@ module.exports = async function messageCreate(client, message) {
         } catch (err) {
           console.error('Erreur installation :', err);
           await loadingMsg.edit('❌ Une erreur est survenue pendant l\'installation : ' + err.message);
+        }
+        break;
+      }
+
+      case 'update': {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+          return message.reply('❌ Seuls les administrateurs peuvent lancer une mise à jour.');
+        }
+
+        const loadingMsg = await message.reply('🔄 Vérification des nouveautés… Cela peut prendre quelques secondes.');
+
+        try {
+          const { updateServer } = require('../setup/updater');
+          const report = await updateServer(message.guild, message.member);
+          await loadingMsg.edit(report);
+        } catch (err) {
+          console.error('Erreur update :', err);
+          await loadingMsg.edit('❌ Une erreur est survenue pendant la mise à jour : ' + err.message);
         }
         break;
       }
