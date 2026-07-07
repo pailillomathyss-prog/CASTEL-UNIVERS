@@ -1,5 +1,6 @@
 [build]
 builder = "nixpacks"
+buildCommand = "cd discord-bot && npm install"
 
 [deploy]
 startCommand = "node discord-bot/index.js"
