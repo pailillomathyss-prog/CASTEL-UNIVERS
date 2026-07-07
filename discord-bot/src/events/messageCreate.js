@@ -63,6 +63,36 @@ module.exports = async function messageCreate(client, message) {
         break;
       }
 
+      case 'delete': {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+          return message.reply('❌ Seuls les administrateurs peuvent utiliser cette commande.');
+        }
+
+        // Demande de confirmation
+        const confirm = await message.reply(
+          '⚠️ **Attention !** Cette commande va supprimer **tous les salons, catégories et rôles** créés par le bot.\n\n' +
+          'Réponds **`CONFIRMER`** dans les 30 secondes pour continuer, ou ignore ce message pour annuler.'
+        );
+
+        try {
+          const filter = m => m.author.id === message.author.id && m.content === 'CONFIRMER';
+          const collected = await message.channel.awaitMessages({ filter, max: 1, time: 30_000, errors: ['time'] });
+
+          await collected.first().delete().catch(() => {});
+          await confirm.delete().catch(() => {});
+
+          const loadingMsg = await message.channel.send('🗑️ Suppression en cours…');
+
+          const { deleteServer } = require('../setup/cleaner');
+          const report = await deleteServer(message.guild, message.member);
+          await loadingMsg.edit(report);
+
+        } catch {
+          await confirm.edit('❌ Suppression annulée — confirmation non reçue dans les temps.').catch(() => {});
+        }
+        break;
+      }
+
       case 'update1.5': {
         if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
           return message.reply('❌ Seuls les administrateurs peuvent lancer cette mise à jour.');
