@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const { getUser, updateUser, addLog } = require('../database/db');
+const { getUser, updateUser, addLog, hasUsedDailyQuota, markDailyUsed } = require('../database/db');
 const { sendLog } = require('../utils/logger');
 const { DEMON_ARTS } = require('../setup/demonArts');
 
@@ -95,6 +95,25 @@ async function handleDemonTrainingButton(interaction) {
 async function startDemonTrial(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
+  // ── Limite 1 entraînement démoniaque par jour ─────────────────
+  if (hasUsedDailyQuota(interaction.user.id, interaction.guild.id, 'training')) {
+    const now = new Date();
+    const msUntilMidnight = new Date(now.toISOString().slice(0, 10) + 'T24:00:00Z') - now;
+    const h = Math.floor(msUntilMidnight / 3600000);
+    const m = Math.floor((msUntilMidnight % 3600000) / 60000);
+    return interaction.editReply({
+      embeds: [{
+        title: '🩸 Entraînement démoniaque terminé pour aujourd\'hui',
+        description:
+          `Tu as déjà accompli ton épreuve quotidienne.\n\n` +
+          `⏳ Prochain entraînement disponible dans **${h}h ${m}min**.\n` +
+          `*Même les démons ont besoin de patience.*`,
+        color: 0x8B0000,
+        footer: { text: 'Castel Univers • Royaume des Démons' },
+      }],
+    });
+  }
+
   const trial = DEMON_TRIALS[Math.floor(Math.random() * DEMON_TRIALS.length)];
   const sessionKey = `${interaction.user.id}-${interaction.guild.id}`;
   activeSessions.set(sessionKey, { trial, started: Date.now() });
@@ -141,6 +160,8 @@ async function handleTrialAnswer(interaction) {
   if (isCorrect) {
     const newProgress = userData.training_progress + trial.points;
     updateUser(interaction.user.id, interaction.guild.id, { training_progress: newProgress });
+    // Marque l'entraînement du jour comme utilisé
+    markDailyUsed(interaction.user.id, interaction.guild.id, 'training');
     addLog(interaction.guild.id, interaction.user.id, 'DEMON_TRAINING_SUCCESS',
       `+${trial.points} progression (total: ${newProgress})`);
 

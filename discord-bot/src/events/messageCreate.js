@@ -63,6 +63,38 @@ module.exports = async function messageCreate(client, message) {
         break;
       }
 
+      case 'update1.5': {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+          return message.reply('❌ Seuls les administrateurs peuvent lancer cette mise à jour.');
+        }
+
+        const loadingMsg = await message.reply('🔄 Application de la mise à jour v1.5…');
+
+        try {
+          const { migrateV15 } = require('../database/db');
+          const { updateServer } = require('../setup/updater');
+
+          // 1. Migration de la base de données
+          migrateV15();
+
+          // 2. Mise à jour des salons, rôles et panels
+          const report = await updateServer(message.guild, message.member);
+
+          await loadingMsg.edit(
+            '✅ **Mise à jour v1.5 appliquée !**\n\n' +
+            '**Nouveautés :**\n' +
+            '🩸 Missions démons : **1 par jour**\n' +
+            '⚔️ Entraînement Pourfendeurs : **1 par jour**\n' +
+            '👹 Entraînement démoniaque : **1 par jour**\n\n' +
+            report
+          );
+        } catch (err) {
+          console.error('Erreur update1.5 :', err);
+          await loadingMsg.edit('❌ Erreur pendant la mise à jour v1.5 : ' + err.message);
+        }
+        break;
+      }
+
       case 'progression': {
         const { getUser } = require('../database/db');
         const userData = getUser(message.author.id, message.guild.id);

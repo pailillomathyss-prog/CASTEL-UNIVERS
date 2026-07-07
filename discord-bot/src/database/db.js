@@ -10,14 +10,16 @@ const db = new Database(path.join(DATA_DIR, 'castel-univers.db'));
 function initDB() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
-      user_id     TEXT NOT NULL,
-      guild_id    TEXT NOT NULL,
-      xp          INTEGER DEFAULT 0,
-      level       INTEGER DEFAULT 1,
-      faction     TEXT DEFAULT NULL,
-      souffle     TEXT DEFAULT NULL,
+      user_id           TEXT NOT NULL,
+      guild_id          TEXT NOT NULL,
+      xp                INTEGER DEFAULT 0,
+      level             INTEGER DEFAULT 1,
+      faction           TEXT DEFAULT NULL,
+      souffle           TEXT DEFAULT NULL,
       training_progress INTEGER DEFAULT 0,
-      last_xp     INTEGER DEFAULT 0,
+      last_xp           INTEGER DEFAULT 0,
+      last_training     TEXT DEFAULT NULL,
+      last_mission      TEXT DEFAULT NULL,
       PRIMARY KEY (user_id, guild_id)
     );
 
@@ -38,6 +40,39 @@ function initDB() {
     );
   `);
   console.log('📦 Base de données initialisée');
+}
+
+// Migration v1.5 — ajoute les colonnes de cooldown journalier si elles n'existent pas
+function migrateV15() {
+  const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!cols.includes('last_training')) {
+    db.exec("ALTER TABLE users ADD COLUMN last_training TEXT DEFAULT NULL");
+    console.log('✅ Migration v1.5 : colonne last_training ajoutée');
+  }
+  if (!cols.includes('last_mission')) {
+    db.exec("ALTER TABLE users ADD COLUMN last_mission TEXT DEFAULT NULL");
+    console.log('✅ Migration v1.5 : colonne last_mission ajoutée');
+  }
+}
+
+// Retourne la date du jour en format YYYY-MM-DD (UTC)
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Vérifie si l'utilisateur a déjà utilisé son quota du jour
+// type = 'training' | 'mission'
+function hasUsedDailyQuota(userId, guildId, type) {
+  const user = getUser(userId, guildId);
+  const col = type === 'mission' ? 'last_mission' : 'last_training';
+  return user[col] === today();
+}
+
+// Marque la date du jour pour le quota
+function markDailyUsed(userId, guildId, type) {
+  const col = type === 'mission' ? 'last_mission' : 'last_training';
+  db.prepare(`UPDATE users SET ${col} = ? WHERE user_id = ? AND guild_id = ?`)
+    .run(today(), userId, guildId);
 }
 
 // ─── Utilisateurs ───────────────────────────────────────────────
@@ -87,4 +122,4 @@ function setGuildInstalled(guildId) {
   ).run(guildId);
 }
 
-module.exports = { initDB, getUser, updateUser, getLeaderboard, addLog, getGuild, setGuildLog, setGuildInstalled };
+module.exports = { initDB, migrateV15, getUser, updateUser, getLeaderboard, addLog, getGuild, setGuildLog, setGuildInstalled, hasUsedDailyQuota, markDailyUsed, today };

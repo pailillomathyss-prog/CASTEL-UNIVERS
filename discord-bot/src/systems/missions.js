@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const { getUser, updateUser, addLog } = require('../database/db');
+const { getUser, updateUser, addLog, hasUsedDailyQuota, markDailyUsed, today } = require('../database/db');
 const { sendLog } = require('../utils/logger');
 const { DEMON_ARTS } = require('../setup/demonArts');
 
@@ -141,6 +141,25 @@ async function handleMissionButton(interaction) {
 async function drawMission(interaction) {
   await interaction.deferReply({ ephemeral: true });
 
+  // ── Limite 1 mission par jour ─────────────────────────────────
+  if (hasUsedDailyQuota(interaction.user.id, interaction.guild.id, 'mission')) {
+    const now = new Date();
+    const msUntilMidnight = new Date(now.toISOString().slice(0, 10) + 'T24:00:00Z') - now;
+    const h = Math.floor(msUntilMidnight / 3600000);
+    const m = Math.floor((msUntilMidnight % 3600000) / 60000);
+    return interaction.editReply({
+      embeds: [{
+        title: '🌙 Tu as déjà accompli ta mission du jour',
+        description:
+          `Muzan est satisfait de ton travail.\n\n` +
+          `⏳ Prochaine mission disponible dans **${h}h ${m}min**.\n` +
+          `*Reviens demain pour une nouvelle mission.*`,
+        color: 0x8B0000,
+        footer: { text: 'Castel Univers • Royaume des Démons' },
+      }],
+    });
+  }
+
   const mission = DEMON_MISSIONS[Math.floor(Math.random() * DEMON_MISSIONS.length)];
   const sessionKey = `${interaction.user.id}-${interaction.guild.id}`;
   activeMissions.set(sessionKey, { mission, started: Date.now() });
@@ -193,6 +212,9 @@ async function handleMissionAnswer(interaction) {
       xp: newXP,
       training_progress: newProgress,
     });
+
+    // Marque la mission du jour comme utilisée
+    markDailyUsed(interaction.user.id, interaction.guild.id, 'mission');
 
     addLog(interaction.guild.id, interaction.user.id, 'MISSION_SUCCESS',
       `Mission "${mission.title}" réussie (+${mission.xpReward} XP, +${mission.progressReward} progression)`);
