@@ -8,143 +8,171 @@ const { createLeaderboardPanel } = require('../systems/leaderboard');
 const { createMissionPanel } = require('../systems/missions');
 const { setGuildLog, addLog } = require('../database/db');
 
-// Canaux à vérifier / créer si absents
+// Liste complète des salons attendus avec leur catégorie
 const REQUIRED_CHANNELS = [
-  // [nom, catégorie, type]
-  { name: '📜・règlement',              category: '🏯 Domaine des Pourfendeurs', type: 'public' },
-  { name: '👋・bienvenue',              category: '🏯 Domaine des Pourfendeurs', type: 'public' },
-  { name: '📢・annonces',               category: '🏯 Domaine des Pourfendeurs', type: 'public', slowmode: 10 },
-  { name: '🎴・choix-rôles',           category: '🏯 Domaine des Pourfendeurs', type: 'public' },
-  { name: '⚔️・entraînement',          category: '🏯 Domaine des Pourfendeurs', type: 'public' },
-  { name: '🏆・classement',            category: '🏯 Domaine des Pourfendeurs', type: 'public' },
-  { name: '👹・repère-des-démons',     category: '🌙 Royaume des Démons',       type: 'public' },
-  { name: '🌑・missions-démons',       category: '🌙 Royaume des Démons',       type: 'public' },
-  { name: '🩸・entraînement-démoniaque', category: '🌙 Royaume des Démons',    type: 'public' },
-  { name: '💬・discussion-générale',   category: '💬 Communauté',               type: 'public' },
-  { name: '🔒・staff',                 category: '🛡️ Staff',                   type: 'private' },
-  { name: '📋・logs',                  category: '🛡️ Staff',                   type: 'private' },
-  { name: '⚙️・configuration',        category: '🛡️ Staff',                   type: 'private' },
+  { name: '📜・règlement',               category: '🏯 Domaine des Pourfendeurs', type: 'public' },
+  { name: '👋・bienvenue',               category: '🏯 Domaine des Pourfendeurs', type: 'public' },
+  { name: '📢・annonces',                category: '🏯 Domaine des Pourfendeurs', type: 'public', slowmode: 10 },
+  { name: '🎴・choix-rôles',            category: '🏯 Domaine des Pourfendeurs', type: 'public' },
+  { name: '⚔️・entraînement',           category: '🏯 Domaine des Pourfendeurs', type: 'public' },
+  { name: '🏆・classement',             category: '🏯 Domaine des Pourfendeurs', type: 'public' },
+  { name: '👹・repère-des-démons',      category: '🌙 Royaume des Démons',       type: 'public' },
+  { name: '🌑・missions-démons',        category: '🌙 Royaume des Démons',       type: 'public' },
+  { name: '🩸・entraînement-démoniaque', category: '🌙 Royaume des Démons',     type: 'public' },
+  { name: '💬・discussion-générale',    category: '💬 Communauté',               type: 'public' },
+  { name: '🔒・staff',                  category: '🛡️ Staff',                   type: 'private' },
+  { name: '📋・logs',                   category: '🛡️ Staff',                   type: 'private' },
+  { name: '⚙️・configuration',         category: '🛡️ Staff',                   type: 'private' },
 ];
 
 async function getOrCreateCategory(guild, name, type, adminRoles) {
-  let cat = guild.channels.cache.find(c => c.name === name && c.type === 4);
-  if (cat) return cat;
+  const existing = guild.channels.cache.find(c => c.name === name && c.type === 4);
+  if (existing) return existing;
 
-  const permissionOverwrites = [];
-  if (type === 'private') {
-    permissionOverwrites.push({ id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] });
-    for (const [, r] of adminRoles) {
-      permissionOverwrites.push({ id: r.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
-    }
-  }
-
+  const permissionOverwrites = buildPerms(guild, type, adminRoles);
   return guild.channels.create({ name, type: 4, permissionOverwrites, reason: '!update Castel Univers' });
 }
 
-async function getOrCreateChannel(guild, chDef, adminRoles) {
+function buildPerms(guild, type, adminRoles) {
+  if (type !== 'private') return [];
+  const perms = [{ id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] }];
+  for (const [, r] of adminRoles) {
+    perms.push({ id: r.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
+  }
+  return perms;
+}
+
+// Retourne le canal existant ou le crée ; indique si c'était une création
+async function ensureChannel(guild, chDef, adminRoles) {
+  // Cherche par nom exact
   const existing = guild.channels.cache.find(c => c.name === chDef.name && c.type === 0);
   if (existing) return { channel: existing, created: false };
 
   const category = await getOrCreateCategory(guild, chDef.category, chDef.type, adminRoles);
-
-  const permissionOverwrites = [];
-  if (chDef.type === 'private') {
-    permissionOverwrites.push({ id: guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] });
-    for (const [, r] of adminRoles) {
-      permissionOverwrites.push({ id: r.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] });
-    }
-  }
-
-  const opts = { name: chDef.name, type: 0, parent: category.id, permissionOverwrites, reason: '!update Castel Univers' };
+  const opts = {
+    name: chDef.name,
+    type: 0,
+    parent: category.id,
+    permissionOverwrites: buildPerms(guild, chDef.type, adminRoles),
+    reason: '!update Castel Univers',
+  };
   if (chDef.slowmode) opts.rateLimitPerUser = chDef.slowmode;
 
   const channel = await guild.channels.create(opts);
   return { channel, created: true };
 }
 
-// Vérifie si un panel existe déjà dans un salon (embed bot présent)
-async function panelExists(channel, titleKeyword) {
-  try {
-    const messages = await channel.messages.fetch({ limit: 20 });
-    return messages.some(m => m.author.bot && m.embeds.length > 0 &&
-      m.embeds[0]?.title?.includes(titleKeyword));
-  } catch { return false; }
+// Trouve un canal par mot-clé dans le cache
+function findChannel(guild, ...keywords) {
+  for (const kw of keywords) {
+    const ch = guild.channels.cache.find(c => c.type === 0 && c.name.includes(kw));
+    if (ch) return ch;
+  }
+  return null;
 }
 
 async function updateServer(guild, requestingMember) {
   const log = [];
-  log.push('🔄 **Mise à jour du serveur Castel Univers…**\n*(Seules les nouveautés manquantes seront créées)*\n');
+  log.push('🔄 **Mise à jour du serveur Castel Univers…**\n');
 
   const adminRoles = guild.roles.cache.filter(r =>
-    r.permissions.has(PermissionsBitField.Flags.Administrator) && !r.managed && r.id !== guild.roles.everyone.id
+    r.permissions.has(PermissionsBitField.Flags.Administrator) &&
+    !r.managed && r.id !== guild.roles.everyone.id
   );
 
   // ── 1. Rôles ────────────────────────────────────────────────
-  log.push('**Rôles :**');
-  const before = guild.roles.cache.size;
+  log.push('**🎭 Rôles :**');
+  const sizeBefore = guild.roles.cache.size;
   await createRoles(guild);
+
+  // Recharge le cache des rôles
+  await guild.roles.fetch();
   await createDemonArtRoles(guild);
-  const added = guild.roles.cache.size - before;
-  log.push(added > 0 ? `✅ ${added} nouveau(x) rôle(s) créé(s)` : '☑️ Tous les rôles existent déjà');
+  await guild.roles.fetch();
+
+  const sizeAfter = guild.roles.cache.size;
+  const addedRoles = sizeAfter - sizeBefore;
+  log.push(addedRoles > 0
+    ? `✅ ${addedRoles} nouveau(x) rôle(s) créé(s)`
+    : '☑️ Tous les rôles sont déjà présents');
 
   // ── 2. Salons ────────────────────────────────────────────────
-  log.push('\n**Salons :**');
-  const channelMap = {};
+  log.push('\n**💬 Salons :**');
   let newChannels = 0;
 
   for (const chDef of REQUIRED_CHANNELS) {
-    const { channel, created } = await getOrCreateChannel(guild, chDef, adminRoles);
-    channelMap[chDef.name] = channel;
+    const { created } = await ensureChannel(guild, chDef, adminRoles);
     if (created) {
       log.push(`✅ Créé : **${chDef.name}**`);
       newChannels++;
     }
   }
-  if (newChannels === 0) log.push('☑️ Tous les salons existent déjà');
 
-  // Helper
-  const find = (keyword) =>
-    Object.entries(channelMap).find(([n]) => n.includes(keyword))?.[1] ||
-    guild.channels.cache.find(c => c.name.includes(keyword) && c.type === 0);
+  // Recharge le cache des canaux après création
+  await guild.channels.fetch();
+
+  if (newChannels === 0) log.push('☑️ Tous les salons sont déjà présents');
 
   // ── 3. Panels ────────────────────────────────────────────────
-  log.push('\n**Panels :**');
-  let newPanels = 0;
+  // Les fonctions createX suppriment l'ancien panel et en créent un nouveau.
+  // On les appelle toujours pour s'assurer qu'ils sont à jour.
+  log.push('\n**🎛️ Panels (mis à jour) :**');
 
-  const checks = [
-    { channel: find('choix-rôles') || find('choix'), keyword: 'Choisis ton chemin',    create: createRolePanel,          label: '⚔️ Panel choix de faction' },
-    { channel: find('⚔️・entraîne') || find('⚔️'), keyword: 'Entraînement des souffles', create: createTrainingPanel,    label: '⚔️ Panel entraînement Pourfendeurs' },
-    { channel: find('démoniaque'),                  keyword: 'Entraînement Démoniaque', create: createDemonTrainingPanel, label: '🩸 Panel entraînement démoniaque' },
-    { channel: find('missions-démons') || find('missions'), keyword: 'Missions des Démons', create: createMissionPanel,  label: '🌑 Panel missions démons' },
-    { channel: find('classement'),                 keyword: 'Classement',              create: (ch) => createLeaderboardPanel(guild, ch), label: '🏆 Panel classement' },
+  const panelTasks = [
+    {
+      channel: findChannel(guild, 'choix-rôles', 'choix'),
+      fn: createRolePanel,
+      label: '⚔️ Panel choix de faction → #choix-rôles',
+    },
+    {
+      channel: findChannel(guild, 'entraînement-démoniaque', 'démoniaque'),
+      fn: createDemonTrainingPanel,
+      label: '🩸 Panel entraînement démoniaque → #entraînement-démoniaque',
+    },
+    {
+      channel: findChannel(guild, 'missions-démons', 'missions'),
+      fn: createMissionPanel,
+      label: '🌑 Panel missions démons → #missions-démons',
+    },
+    {
+      channel: findChannel(guild, 'classement'),
+      fn: (ch) => createLeaderboardPanel(guild, ch),
+      label: '🏆 Panel classement → #classement',
+    },
   ];
 
-  for (const check of checks) {
-    if (!check.channel) continue;
-    const exists = await panelExists(check.channel, check.keyword);
-    if (!exists) {
-      await check.create(check.channel);
-      log.push(`✅ Créé : **${check.label}**`);
-      newPanels++;
+  // Entraînement Pourfendeurs — cherche le salon ⚔️・entraînement (pas le démoniaque)
+  const trainingCh = guild.channels.cache.find(c =>
+    c.type === 0 && c.name.includes('entraînement') && !c.name.includes('démoniaque')
+  );
+  if (trainingCh) {
+    panelTasks.unshift({
+      channel: trainingCh,
+      fn: createTrainingPanel,
+      label: '⚔️ Panel entraînement Pourfendeurs → #entraînement',
+    });
+  }
+
+  for (const task of panelTasks) {
+    if (!task.channel) {
+      log.push(`⚠️ Salon introuvable pour : ${task.label}`);
+      continue;
+    }
+    try {
+      await task.fn(task.channel);
+      log.push(`✅ ${task.label}`);
+    } catch (err) {
+      log.push(`❌ Erreur panel : ${task.label} — ${err.message}`);
     }
   }
-  if (newPanels === 0) log.push('☑️ Tous les panels existent déjà');
 
-  // ── 4. Logs ──────────────────────────────────────────────────
-  const logsChannel = find('logs');
-  if (logsChannel) {
-    const { setGuildLog } = require('../database/db');
-    setGuildLog(guild.id, logsChannel.id);
-  }
+  // ── 4. Canal de logs ─────────────────────────────────────────
+  const logsChannel = findChannel(guild, 'logs');
+  if (logsChannel) setGuildLog(guild.id, logsChannel.id);
 
   addLog(guild.id, requestingMember.id, 'UPDATE', `Mise à jour par ${requestingMember.user.tag}`);
 
-  const total = newChannels + newPanels;
-  log.push(total === 0
-    ? '\n✅ **Tout est déjà à jour ! Aucune modification effectuée.**'
-    : `\n🎉 **Mise à jour terminée !** ${total} élément(s) ajouté(s).`
-  );
-
+  log.push(`\n🎉 **Mise à jour terminée !** ${newChannels} salon(s) ajouté(s), tous les panels ont été rafraîchis.`);
   return log.join('\n');
 }
 
